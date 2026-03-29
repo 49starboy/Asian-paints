@@ -1,5 +1,7 @@
 import asyncio
 import os
+import threading
+from flask import Flask
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,7 +14,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 MONGO_URI = os.getenv("MONGO_URI", "")
 LOG_CHANNEL = int(os.getenv("LOG_CHANNEL", "-100xxxxxxxxxx"))
 
-START_LINK = "https://t.me/ggggtybb/72"
+# ================= CHECK =================
+if not MONGO_URI:
+    print("❌ MONGO_URI missing!")
+    exit()
 
 # ================= DATABASE =================
 mongo = AsyncIOMotorClient(MONGO_URI)
@@ -27,12 +32,22 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+# ================= WEB SERVER =================
+web = Flask(__name__)
+
+@web.route("/")
+def home():
+    return "✅ Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    web.run(host="0.0.0.0", port=port)
+
 # ================= START =================
 @app.on_message(filters.private & filters.command("start"))
 async def start_cmd(client, message):
     user_id = message.from_user.id
 
-    # Save user
     if not await users_col.find_one({"_id": user_id}):
         await users_col.insert_one({"_id": user_id, "msg_id": 72})
 
@@ -47,18 +62,8 @@ async def start_cmd(client, message):
         reply_markup=btn
     )
 
-# ================= GROUP ADD =================
-@app.on_message(filters.group & filters.new_chat_members)
-async def bot_added(client, message):
-    for user in message.new_chat_members:
-        if user.is_self:
-            await message.reply_text(
-                "✅ Thanks for adding me!\n\nI will auto send messages every 15 sec 🚀"
-            )
-
 # ================= AUTO LOOP =================
 async def auto_send():
-    await app.start()
     while True:
         users = users_col.find({})
         async for user in users:
@@ -76,13 +81,20 @@ async def auto_send():
                 await app.send_message(LOG_CHANNEL, f"✅ Sent {link} to {user['_id']}")
 
             except Exception as e:
-                print(e)
+                print("Error:", e)
 
         await asyncio.sleep(15)
 
 # ================= MAIN =================
 async def main():
+    await app.start()
+    print("🚀 Bot Started!")
     await auto_send()
 
+# ================= RUN BOTH =================
 if __name__ == "__main__":
+    # Run Flask in separate thread
+    threading.Thread(target=run_web).start()
+
+    # Run bot loop
     asyncio.run(main())
