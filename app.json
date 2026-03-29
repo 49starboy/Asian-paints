@@ -1,0 +1,44 @@
+{
+  "name": "Auto Link Telegram Bot",
+  "description": "Telegram bot that sends auto increment links every 15 seconds with MongoDB support",
+  "logo": "https://telegra.ph/file/6e2f6e2b5d0e4f6c3.jpg",
+  "keywords": [
+    "telegram",
+    "bot",
+    "pyrogram",
+    "mongodb",
+    "automation"
+  ],
+  "website": "https://github.com/49starboy/Asian-paints",
+  "repository": "https://github.com/49starboy/Asian-paints",
+  "env": {
+    "API_ID": {
+      "description": "Your Telegram API ID",
+      "required": true
+    },
+    "API_HASH": {
+      "description": "Your Telegram API Hash",
+      "required": true
+    },
+    "BOT_TOKEN": {
+      "description": "Telegram Bot Token from BotFather",
+      "required": true
+    },
+    "MONGO_URI": {
+      "description": "MongoDB connection URI",
+      "required": true
+    },
+    "LOG_CHANNEL": {
+      "description": "Telegram Log Channel ID (e.g. -100xxxx)",
+      "required": true
+    },
+    "START_NUMBER": {
+      "description": "Starting message number",
+      "value": "72"
+    },
+    "DELAY": {
+      "description": "Delay between messages (seconds)",
+      "value": "15"
+    }
+  }
+}
