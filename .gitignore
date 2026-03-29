@@ -1,0 +1,33 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.env/
+.env
+
+# Environment variables (IMPORTANT - never upload)
+.env
+
+# Pyrogram session files
+*.session
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor folders
+.vscode/
+.idea/
+
+# Database files (local)
+*.sqlite3
+
+# Misc
+*.bak
+*.swp
