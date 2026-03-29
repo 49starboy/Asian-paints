@@ -4,3 +4,4 @@ motor==3.3.1
 flask==2.2.5
 gunicorn
 dnspython
+hypercorn
