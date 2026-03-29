@@ -1,76 +1,88 @@
 import asyncio
 import os
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from motor.motor_asyncio import AsyncIOMotorClient
 
-# Fix for Python 3.11+
-asyncio.set_event_loop(asyncio.new_event_loop())
+# ================= CONFIG =================
+API_ID = int(os.getenv("API_ID", "123456"))
+API_HASH = os.getenv("API_HASH", "your_api_hash")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "your_bot_token")
 
-# ENV VARIABLES
-API_ID = int(os.getenv("API_ID", "0"))
-API_HASH = os.getenv("API_HASH", "")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+MONGO_URI = os.getenv("MONGO_URI", "")
+LOG_CHANNEL = int(os.getenv("LOG_CHANNEL", "-100xxxxxxxxxx"))
 
-START_NUMBER = int(os.getenv("START_NUMBER", "72"))
-DELAY = int(os.getenv("DELAY", "15"))
-BASE_LINK = os.getenv("BASE_LINK", "https://t.me/ggggtybb/{}")
+START_LINK = "https://t.me/ggggtybb/72"
 
-# APP
+# ================= DATABASE =================
+mongo = AsyncIOMotorClient(MONGO_URI)
+db = mongo.bot_db
+users_col = db.users
+
+# ================= BOT =================
 app = Client(
-    "auto-link-bot",
+    "auto-bot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
 
-# START (PRIVATE)
+# ================= START =================
 @app.on_message(filters.private & filters.command("start"))
-async def start(client, message):
-    bot = await client.get_me()
+async def start_cmd(client, message):
+    user_id = message.from_user.id
 
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Me To Group", url=f"https://t.me/{bot.username}?startgroup=true")]
+    # Save user
+    if not await users_col.find_one({"_id": user_id}):
+        await users_col.insert_one({"_id": user_id, "msg_id": 72})
+
+    btn = InlineKeyboardMarkup([
+        [InlineKeyboardButton("➕ Add Me To Group", url=f"https://t.me/{(await client.get_me()).username}?startgroup=true")],
+        [InlineKeyboardButton("Help ⚙️", callback_data="help"),
+         InlineKeyboardButton("About ❤️", callback_data="about")]
     ])
 
     await message.reply_text(
-        "👋 Hello!\n\n👉 Mujhe group me add karo, main automatic links bhejunga 🔥",
-        reply_markup=buttons
+        "👋 Hello!\n\n🤖 Main auto message bot hoon.\n📌 Mujhe group me add karo.",
+        reply_markup=btn
     )
 
-
-# BOT ADDED IN GROUP
-@app.on_message(filters.new_chat_members)
-async def added(client, message):
-    bot = await client.get_me()
-
+# ================= GROUP ADD =================
+@app.on_message(filters.group & filters.new_chat_members)
+async def bot_added(client, message):
     for user in message.new_chat_members:
-        if user.id == bot.id:
-            await message.reply_text("✅ Bot activated in this group 🚀")
+        if user.is_self:
+            await message.reply_text(
+                "✅ Thanks for adding me!\n\nI will auto send messages every 15 sec 🚀"
+            )
 
-            # start auto sending
-            asyncio.create_task(auto_send(message.chat.id))
-
-
-# AUTO SEND FUNCTION
-async def auto_send(chat_id):
-    number = START_NUMBER
-
-    while True:
-        try:
-            link = BASE_LINK.format(number)
-            await app.send_message(chat_id, link)
-            number += 1
-            await asyncio.sleep(DELAY)
-        except Exception as e:
-            print(e)
-            break
-
-
-# RUN
-async def main():
+# ================= AUTO LOOP =================
+async def auto_send():
     await app.start()
-    print("Bot Started Successfully 🚀")
-    await idle()
+    while True:
+        users = users_col.find({})
+        async for user in users:
+            try:
+                msg_id = user.get("msg_id", 72)
+                link = f"https://t.me/ggggtybb/{msg_id}"
+
+                await app.send_message(user["_id"], link)
+
+                await users_col.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"msg_id": msg_id + 1}}
+                )
+
+                await app.send_message(LOG_CHANNEL, f"✅ Sent {link} to {user['_id']}")
+
+            except Exception as e:
+                print(e)
+
+        await asyncio.sleep(15)
+
+# ================= MAIN =================
+async def main():
+    await auto_send()
 
 if __name__ == "__main__":
     asyncio.run(main())
